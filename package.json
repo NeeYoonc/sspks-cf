@@ -1,0 +1,19 @@
+{
+  "name": "sspks-cf",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Synology DSM 7 SPK package source: offline index in R2 served by a Cloudflare Worker",
+  "license": "GPL-3.0-only",
+  "scripts": {
+    "index": "python tools/index.py",
+    "index:upload": "python tools/index.py --upload",
+    "models": "python tools/gen_models.py",
+    "test": "python tests/test_index.py && python tests/test_r2.py && python tests/test_upload.py && node --test \"tests/*.test.mjs\"",
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
+  },
+  "devDependencies": {
+    "wrangler": "^4.20.0"
+  }
+}

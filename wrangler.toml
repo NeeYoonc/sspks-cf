@@ -1,0 +1,60 @@
+# Cloudflare Worker configuration for the R2-backed DSM 7 package source.
+#
+# Deploy:  npx wrangler deploy
+# Local:   npx wrangler dev    (uses a local R2 emulation)
+#
+# Create the bucket first:  npx wrangler r2 bucket create sspks
+
+name = "sspks-cf"
+main = "src/worker.js"
+compatibility_date = "2026-11-01"
+
+# Custom domain (top-level key: must stay outside the [vars] table).
+# Keeping it in the config means every `wrangler deploy` keeps the domain attached
+# instead of only relying on the binding created in the dashboard.
+routes = [
+  { pattern = "ssp.dnof.net", custom_domain = true }
+]
+
+# Keep the workers.dev URL alive as a debugging/fallback entry point.
+workers_dev = true
+preview_urls = false
+
+[vars]
+# Pin the public URL used in Package Center links / icon URLs, so the response is
+# identical whether DSM reaches us via the custom domain or workers.dev.
+BASE_URL = "https://ssp.dnof.net/"
+# SITE_NAME = "DeepSeek Harness 套件源"
+# GitHub repositories the cron sync follows, comma separated (default: NeeYoonc/dsh-nas).
+# Every source must publish an sspks-index.json release asset; sources without one
+# are skipped and keep their previous packages (see src/sync.js).
+DSH_REPOS = "NeeYoonc/dsh-nas,NeeYoonc/bili-sync-up"
+# 非 GitHub 的 DSM 套件源（逗号分隔的标准 Package Center 地址）。Worker 会查询这些源
+# （目前覆盖 x86_64 / armv8 两个架构家族），把最新包镜像进 R2 并合并进同一个索引。
+#
+# 1) Lucky 官方源（含 lucky / lucky_docker / wanji / wanji_docker / xiaojv /
+#    xiaojv_waf / xiaoman 七个变体）。主站 release.66666.host 与镜像 lucky666.cn 内容
+#    完全一致（同 md5），但 Cloudflare 到主站只有 ~0.7 MB/s、到镜像有 ~3.5 MB/s，
+#    所以下载走镜像；主站仍可直接加进 DSM 作为第二套件源。
+# 2) SynoCommunity（~298 个 DSM7 包、约 7.1 GB）。包多、体积大，所以每个 cron 只镜像
+#    一批（HOST_BATCH_FILES=40），进度存在 spk/.host-sync-state.json，跑完前索引保持旧版；
+#    全量镜像后 R2 占用约 8 GB（免费额度 10 GB），新增包会随每轮 cron 增量同步。
+SPK_HOSTS = "https://lucky666.cn/spk,https://packages.synocommunity.com/"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "sspks"
+
+# 下载计数（D1）。schema 见 migrations/0001_downloads.sql。
+[[d1_databases]]
+binding = "DB"
+database_name = "sspks-stats"
+database_id = "69042f10-1f50-4aed-a887-87d703be9eb7"
+
+# 每 5 分钟检查一次 dsh-nas 的最新 Release；有新版本就把 SPK / 图标 / 索引同步进 R2。
+# 没有新版本时只发一次 CDN 请求（~1 KB）然后退出；同步结果写在 spk/.last-sync。
+[triggers]
+crons = ["*/5 * * * *"]
+
+[observability]
+enabled = true

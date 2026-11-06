@@ -1,0 +1,32 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # The Worker and the tests are dependency-free: no npm install needed.
+      - name: Python tests (indexer, R2 SigV4, upload layout)
+        run: |
+          python tests/test_index.py
+          python tests/test_r2.py
+          python tests/test_upload.py
+
+      - name: Worker tests (DSM 7 contract)
+        run: node --test "tests/*.test.mjs"
+
+      - name: Generated model table is up to date
+        run: python tools/gen_models.py --check

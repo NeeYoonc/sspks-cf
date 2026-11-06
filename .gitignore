@@ -1,0 +1,13 @@
+# Generated index and extracted icons
+dist/
+# Scheduled task logs
+logs/
+# Local Cloudflare state (wrangler dev / local R2 emulation)
+.wrangler/
+.dev.vars
+node_modules/
+# SPK payloads are usually big binaries; keep the directory but not the files
+packages/*
+!packages/.gitkeep
+__pycache__/
+*.pyc

@@ -1,0 +1,18 @@
+{
+  "defaults": {
+    "download_count": 0,
+    "maintainer": "Your Name",
+    "maintainer_url": "https://example.com",
+    "distributor": "Community Repository",
+    "distributor_url": "",
+    "support_url": "",
+    "changelog_ad_enabled": false,
+    "changelog_ad": ""
+  },
+  "packages_dir": "packages",
+  "out_dir": "dist",
+  "file_mask": "*.spk",
+  "base_url": "",
+  "prefix": "spk",
+  "bucket": ""
+}

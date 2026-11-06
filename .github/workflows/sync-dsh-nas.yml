@@ -1,0 +1,61 @@
+name: sync-dsh-nas
+
+# 把 NeeYoonc/dsh-nas 最新 Release 的 SPK 同步到 R2 套件源。
+#
+# 触发方式（任选）：
+#   1. 手动：Actions → sync-dsh-nas → Run workflow
+#   2. 由 dsh-nas 的 release workflow 触发 repository_dispatch（见 README）
+#   3. 需要轮询时取消下面 schedule 的注释
+#
+# 需要的仓库 Secrets：
+#   DSH_REPO_TOKEN        fine-grained PAT，对 NeeYoonc/dsh-nas 有 Contents: Read
+#   R2_ACCOUNT_ID         R2 API Token 的 Account ID
+#   R2_ACCESS_KEY_ID      R2 API Token 的 Access Key ID
+#   R2_SECRET_ACCESS_KEY  R2 API Token 的 Secret Access Key
+#
+# 首次使用前把本仓库推到 GitHub（私有仓库也可以）。
+
+on:
+  workflow_dispatch:
+  repository_dispatch:
+    types: [dsh-nas-release]
+  # schedule:
+  #   - cron: "17 */2 * * *"
+
+concurrency:
+  group: sync-dsh-nas
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DSH_REPO: NeeYoonc/dsh-nas
+      R2_BUCKET: sspks
+      UPLOAD_BACKEND: s3
+      GH_TOKEN: ${{ secrets.DSH_REPO_TOKEN }}
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # 恢复上次的 SPK 与同步标记：Release 未变化时脚本会直接秒退，不会重传 326 MiB。
+      - name: Restore SPK cache
+        uses: actions/cache@v4
+        with:
+          path: packages
+          key: sspks-packages-${{ github.run_id }}
+          restore-keys: |
+            sspks-packages-
+
+      - name: Sync latest Release to R2
+        run: bash scripts/sync-latest-release.sh
